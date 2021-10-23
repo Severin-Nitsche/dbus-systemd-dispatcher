@@ -74,7 +74,9 @@ locks the session and before the system goes to sleep:
     Type=forking
     # ... and swaylock will fork only after it has locked the screen.
     ExecStart=/usr/bin/swaylock -f
+    # If swaylock crashes, always restart it immediately:
     Restart=on-failure
+    RestartSec=0
 
     [Install]
     WantedBy=lock.target
