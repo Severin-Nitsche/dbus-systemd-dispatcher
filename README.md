@@ -120,6 +120,10 @@ This will happen _before_ the system is suspended.
 Changelog
 ---------
 
+## 2.4.1
+
+- Fixed regression introduced in 2.4.0.
+
 ## 2.4.0
 
 - Sleeping will be now inhibited when `systemd-lock-handler` starts. This
