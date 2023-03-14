@@ -68,11 +68,11 @@ func ListenForSleep() {
 				log.Fatalln("Failed to grab sleep inhibitor lock", err)
 			}
 			log.Println("Got lock on sleep inhibitor")
+
 			<-c
 			log.Println("The system is going to sleep")
 
-			err = StartSystemdUserUnit("sleep.target")
-			if err != nil {
+			if err = StartSystemdUserUnit("sleep.target"); err != nil {
 				log.Println("Error starting sleep.target:", err)
 			}
 			// Uninhibit sleeping. I.e.: let the system actually go to sleep.
@@ -139,8 +139,7 @@ func ListenForLock(user *user.User) {
 			}
 			log.Println("Session signal for current user:", signalName)
 
-			err = StartSystemdUserUnit(target)
-			if err != nil {
+			if err = StartSystemdUserUnit(target); err != nil {
 				log.Println("Error starting target:", target, err)
 			}
 		}
