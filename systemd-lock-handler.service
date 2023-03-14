@@ -6,6 +6,8 @@ Documentation=https://sr.ht/~whynothugo/systemd-lock-handler
 Slice=session.slice
 ExecStart=/usr/lib/systemd-lock-handler
 Type=notify
+Restart=on-failure
+RestartSec=10s
 
 [Install]
 WantedBy=default.target
