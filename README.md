@@ -1,5 +1,9 @@
 systemd-lock-handler
 ====================
+[Source](https://git.sr.ht/~whynothugo/systemd-lock-handler) |
+[Issues](https://todo.sr.ht/~whynothugo/systemd-lock-handler) |
+[Patches](https://lists.sr.ht/~whynothugo/public-inbox) |
+[Chat](irc://ircs.libera.chat:6697/#whynothugo)
 
 [![builds.sr.ht status](https://builds.sr.ht/~whynothugo/systemd-lock-handler/commits/.build.yml.svg)](https://builds.sr.ht/~whynothugo/systemd-lock-handler/commits/.build.yml?)
 
