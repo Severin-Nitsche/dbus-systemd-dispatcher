@@ -1,24 +1,24 @@
 DESTDIR?=/
 PREFIX=/usr
 
-dbus-systemd-dispatcher: main.go
+bin/dbus-systemd-dispatcher: main.go
 	mkdir -p bin
 	go build -ldflags '-s'
 	mv dbus-systemd-dispatcher bin
 
-sleep-plugin: plugins/sleep.go
+bin/sleep.so: plugins/sleep.go
 	mkdir -p bin
 	go build -buildmode=plugin plugins/sleep.go
 	mv sleep.so bin
 
-lock-plugin: plugins/lock.go
+bin/lock.so: plugins/lock.go
 	mkdir -p bin
 	go build -buildmode=plugin plugins/lock.go
 	mv lock.so bin
 
-plugins: sleep-plugin lock-plugin
+plugins: bin/sleep.so bin/lock.so
 
-build: dbus-systemd-dispatcher
+build: bin/dbus-systemd-dispatcher
 
 install: build
 	@install -Dm755 dbus-systemd-dispatcher ${DESTDIR}${PREFIX}/lib/dbus-systemd-dispatcher

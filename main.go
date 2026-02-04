@@ -1,6 +1,7 @@
 package main
 
 import (
+  "flag"
   "context"
   "fmt"
   "log"
@@ -123,8 +124,7 @@ func ListenFor(
 }
 
 type Config struct {
-  Targets [] struct {
-    Target string `yaml:"target"`
+  Targets map[string]struct {
     Dlib string `yaml:"dlib"`
     Toggle bool `yaml:"toggle"`
     Start bool `yaml:"start"`
@@ -133,16 +133,77 @@ type Config struct {
   } `yaml:"targets"`
 }
 
+type ConfigPaths struct {
+  ConfigDirs []string `env:"XDG_CONFIG_DIRS" env-separator:":" env-default:"/etc/xdg"`
+  ConfigHome string `env:"XDG_CONFIG_HOME" env-default:""`
+  Home []string `env:"HOME"`
+}
+
+func searchPaths[T any](override bool, value *T, subdir string, file string, merge func(string, any) error, paths ...string) {
+  ok := false
+  f := -1
+  offset := len(paths) - 1
+  if override {
+    f = 1
+    offset = 0
+  }
+  for i := 0; i < len(paths); i++ {
+    path := paths[f*i+offset]
+    file := fmt.Sprintf("%v/%v/%v",path,subdir,file)
+    err := merge(file, value)
+    if err == nil {
+      ok = true // We found a valid file
+      if override {
+	return
+      }
+    }
+  }
+
+  if !ok {
+    log.Fatalln("Failed to locate file:", file)
+  }
+}
+
+func parseConfig() (Config, ConfigPaths) {
+  var cfg Config
+  var paths ConfigPaths
+
+  // Check if there is a command-line argument set
+  configFile := flag.String("config", "config.yml", "The name of the configuration file.")
+  configPath := flag.String("search-path", "environment", "Additional configuration search path.")
+  override := flag.Bool("override", false, "Apply the most important config file instead of merging.")
+  flag.Parse()
+
+  err := cleanenv.ReadEnv(&paths)
+  if err != nil && *configPath == "environment" {
+    log.Fatalln("Failed to read environment paths:", err)
+  }
+
+  // Ensure that $XDG_CONFIG_HOME is well formed
+  if paths.ConfigHome == "" {
+    paths.ConfigHome = fmt.Sprintf("%v/.config",paths.Home)
+  }
+
+  dirs := make([]string, len(paths.ConfigDirs)+2)
+  copy(dirs[2:], paths.ConfigDirs)
+  dirs[1] = paths.ConfigHome
+  dirs[0] = *configPath
+  if *configPath == "environment" {
+    dirs = dirs[1:]
+  }
+  paths.ConfigDirs = dirs
+
+  searchPaths(*override, &cfg, "dbus-systemd-dispatcher", *configFile, cleanenv.ReadConfig, paths.ConfigDirs...)
+
+  return cfg, paths
+}
+
 func main() {
   log.SetFlags(log.Lshortfile)
 
-  var cfg Config
-  err := cleanenv.ReadConfig("config.yml", &cfg)
-  if err != nil {
-    log.Fatalln("Failed to read config:", err)
-  }
+  cfg,paths := parseConfig()
 
-  for _, target := range cfg.Targets {
+  for name, target := range cfg.Targets {
     // Convert the matchOptions map to []MatchOption
     matchOptions := make([]dbus.MatchOption, 0, len(target.MatchOptions))
     for key, value := range target.MatchOptions {
@@ -150,24 +211,29 @@ func main() {
     }
     
     // Load dynamic library
-    dlib, err := plugin.Open(target.Dlib)
-    if err != nil {
-      log.Fatalf("Failed to load dynamic library %v for target %v: %v", target.Dlib, target.Target, err)
+    dload := func(path string, lib any) error {
+      var err error
+      dlib := lib.(**plugin.Plugin)
+      *dlib, err = plugin.Open(path)
+      return err
     }
+
+    var dlib *plugin.Plugin 
+    searchPaths(true, &dlib, "dbus-systemd-dispatcher", target.Dlib, dload, paths.ConfigDirs...)
 
     symbol, err := dlib.Lookup("Hardcode")
     if err != nil {
-      log.Fatalf("Failed to locate symbol 'Hardcode' in dynamic library %v for target %v: %v", target.Dlib, target.Target, err)
+      log.Fatalf("Failed to locate symbol 'Hardcode' in dynamic library %v for target %v: %v", target.Dlib, name, err)
     }
 
     hardcode, ok := symbol.(Hardcode)
     if !ok {
-      log.Fatalf("Unexpected signature for symbol 'Hardcode' in dynamic library %v for target %v", target.Dlib, target.Target)
+      log.Fatalf("Unexpected signature for symbol 'Hardcode' in dynamic library %v for target %v", target.Dlib, name)
     }
 
     // Dispatch Listener
     ListenFor(
-      target.Target,
+      name,
       target.Toggle,
       target.Start,
       target.System,

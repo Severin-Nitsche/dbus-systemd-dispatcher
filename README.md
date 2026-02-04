@@ -42,8 +42,21 @@ specified `.so` files for custom logic must be locateable.
 Configuration
 -------------
 
-The program is configured via `configuration.yaml`.
-All targets must be configured under the `targets` key as list entries with the
+The program is configured via `config.yml`.  It is searched for under the
+locations provided in `$XDG_CONFIG_DIRS` and `$XDG_CONFIG_HOME`.  If
+configuration files reside in multiple places, their corresponding values are
+merged. Here, the files deemed more important according to the
+[XDG Base Directory
+Specification](https://specifications.freedesktop.org/basedir/latest/) take
+precedence.
+
+The search path can be overridden using `--search-path`. The configuration file
+name can be changed via `--config`. Merging can be turned off via `--override`.
+Note that even then, the file looked for resides under
+`<search-path>/dbus-systemd-dispatcher/<config>`. If the search path is not
+accessible, the program will fall back to the usual environment search paths.
+
+All targets must be configured under the `targets` key as map entries with the
 following keys:
 
 |  key   |     description     |
@@ -60,7 +73,7 @@ Consider this example for further reference:
 ```yaml
 # config.yaml
 targets:
-  - target: "sleep.target"
+  "sleep.target":
     dlib: "bin/sleep.so"
     toggle: true
     start: true
