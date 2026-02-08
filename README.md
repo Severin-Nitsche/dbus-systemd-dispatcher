@@ -19,7 +19,7 @@ Installation
 ------------
 
 I don't know why you would install this manually.
-When time comes, I plan however on writing a nice nix-module for this.
+This repo provides a convenient NixOS module for installation.
 
 ## Manual
 

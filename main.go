@@ -139,7 +139,7 @@ type ConfigPaths struct {
   Home []string `env:"HOME"`
 }
 
-func searchPaths[T any](override bool, value *T, subdir string, file string, merge func(string, any) error, paths ...string) {
+func searchPaths[T any](debug bool, override bool, value *T, subdir string, file string, merge func(string, any) error, paths ...string) {
   ok := false
   f := -1
   offset := len(paths) - 1
@@ -156,6 +156,8 @@ func searchPaths[T any](override bool, value *T, subdir string, file string, mer
       if override {
 	return
       }
+    } else if debug {
+      log.Println(err)
     }
   }
 
@@ -164,7 +166,7 @@ func searchPaths[T any](override bool, value *T, subdir string, file string, mer
   }
 }
 
-func parseConfig() (Config, ConfigPaths) {
+func parseConfig() (Config, ConfigPaths, bool) {
   var cfg Config
   var paths ConfigPaths
 
@@ -172,6 +174,7 @@ func parseConfig() (Config, ConfigPaths) {
   configFile := flag.String("config", "config.yml", "The name of the configuration file.")
   configPath := flag.String("search-path", "environment", "Additional configuration search path.")
   override := flag.Bool("override", false, "Apply the most important config file instead of merging.")
+  debug := flag.Bool("debug", false, "Print debug information.")
   flag.Parse()
 
   err := cleanenv.ReadEnv(&paths)
@@ -193,15 +196,15 @@ func parseConfig() (Config, ConfigPaths) {
   }
   paths.ConfigDirs = dirs
 
-  searchPaths(*override, &cfg, "dbus-systemd-dispatcher", *configFile, cleanenv.ReadConfig, paths.ConfigDirs...)
+  searchPaths(*debug, *override, &cfg, "dbus-systemd-dispatcher", *configFile, cleanenv.ReadConfig, paths.ConfigDirs...)
 
-  return cfg, paths
+  return cfg, paths, *debug
 }
 
 func main() {
   log.SetFlags(log.Lshortfile)
 
-  cfg,paths := parseConfig()
+  cfg, paths, debug := parseConfig()
 
   for name, target := range cfg.Targets {
     // Convert the matchOptions map to []MatchOption
@@ -219,7 +222,7 @@ func main() {
     }
 
     var dlib *plugin.Plugin 
-    searchPaths(true, &dlib, "dbus-systemd-dispatcher", target.Dlib, dload, paths.ConfigDirs...)
+    searchPaths(debug, true, &dlib, "dbus-systemd-dispatcher", target.Dlib, dload, paths.ConfigDirs...)
 
     symbol, err := dlib.Lookup("Hardcode")
     if err != nil {
