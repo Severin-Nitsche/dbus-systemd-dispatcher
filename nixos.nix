@@ -28,39 +28,34 @@ in {
     system = options;
   } // options;
 
-  config = lib.mkIf (cfg.enable or cfg.system.enable) {
-    systemd.packages = [ cfg.package ] ++ cfg.plugins ++ cfg.system.plugins;
-
-    dbus-systemd-dispatcher.plugins = if cfg.targets != {} then lib.mkBefore [
-      (mkPlugin [] cfg.targets "")
+  config = let
+    packages = plugins: [ cfg.package ] ++ plugins;
+    plugins = targets: if targets != {} then lib.mkBefore [
+      (mkPlugin [] targets "")
     ] else [];
-
-    dbus-systemd-dispatcher.system.plugins = if cfg.system.targets != {} then lib.mkBefore [
-      (mkPlugin [] cfg.system.targets "")
-    ] else [];
-
-    systemd.user.services.dbus-systemd-dispatcher = {
-      enable = cfg.enable;
-
+    dbus-systemd-dispatcher = plugins: {
       environment = {
-        XDG_CONFIG_DIRS = builtins.concatStringsSep ":" cfg.plugins;
+        XDG_CONFIG_DIRS = lib.join ":" cfg.plugins;
       };
 
       wantedBy = [
         "default.target"
       ];
     };
+  in lib.mkMerge [
+    (lib.mkIf cfg.enable {
+      systemd.packages = packages cfg.plugins;
 
-    systemd.services.dbus-systemd-dispatcher = {
-      enable = cfg.system.enable;
+      dbus-systemd-dispatcher.plugins = plugins cfg.targets;
 
-      environment = {
-        XDG_CONFIG_DIRS = builtins.concatStringsSep ":" cfg.system.plugins;
-      };
+      systemd.user.services.dbus-systemd-dispatcher = dbus-systemd-dispatcher cfg.plugins;
+    })
+    (lib.mkIf cfg.system.enable {
+      systemd.packages = packages cfg.system.plugins;
 
-      wantedBy = [
-        "default.target"
-      ];
-    };
-  };
+      dbus-systemd-dispatcher.system.plugins = plugins cfg.system.targets;
+
+      systemd.services.dbus-systemd-dispatcher = dbus-systemd-dispatcher cfg.system.plugins;
+    })
+  ];
 }
