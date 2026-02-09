@@ -16,7 +16,9 @@
     };
 
     plugins = {
-      sleep = self.dsdlib.mkPlugin [ ./plugins/sleep.go ] {
+      sleep = self.dsdlib.mkPlugin
+        [ ./targets/user/sleep.target ]
+        [ ./plugins/sleep.go ] {
         "sleep.target" = {
           dlib = "lib/sleep.so";
           toggle = true;
@@ -29,7 +31,9 @@
           };
         };
       } "sha256-HlA6xFXQ4dOYuq6cMi01PNUVVajSHkKiKqJRp3Voj7k=";
-      lock = self.dsdlib.mkPlugin [ ./plugins/lock.go ] {
+      lock = self.dsdlib.mkPlugin
+        [ ./targets/user/lock.target ./targets/user/unlock.target ]
+        [ ./plugins/lock.go ] {
         "lock.target" = {
           dlib = "lib/lock.so";
           toggle = false;
@@ -56,8 +60,9 @@
     };
 
     dsdlib = {
-      mkPlugin = plugins: config: vendorHash:
+      mkPlugin = targets: plugins: config: vendorHash:
         pkgs.callPackage ./plugin.nix { 
+          inherit targets;
           inherit plugins; 
           inherit config; 
           inherit vendorHash;
@@ -67,7 +72,7 @@
     nixosModules = {
       default = self.nixosModules.dbus-systemd-dispatcher;
       dbus-systemd-dispatcher = (import ./nixos.nix) 
-        self.dsdlib.mkPlugin self.packages.x86_64-linux;
+        (self.dsdlib.mkPlugin []) self.packages.x86_64-linux;
     };
 
   };

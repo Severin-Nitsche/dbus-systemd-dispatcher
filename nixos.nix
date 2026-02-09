@@ -29,7 +29,7 @@ in {
   } // options;
 
   config = lib.mkIf (cfg.enable or cfg.system.enable) {
-    systemd.packages = [ cfg.package ];
+    systemd.packages = [ cfg.package ] ++ cfg.plugins ++ cfg.system.plugins;
 
     dbus-systemd-dispatcher.plugins = if cfg.targets != {} then lib.mkBefore [
       (mkPlugin [] cfg.targets "")

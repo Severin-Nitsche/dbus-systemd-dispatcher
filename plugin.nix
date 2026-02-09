@@ -1,6 +1,7 @@
 {
   plugins,
   config,
+  targets,
   vendorHash,
   lib,
   buildGoModule,
@@ -10,14 +11,24 @@
 let
   fs = lib.fileset;
   srcPaths = plugins ++ [ ./go.mod ./go.sum ]; 
-  srcFiles = fs.unions (if plugins == [] then [] else srcPaths);
-  targets = { targets = config; };
-  configFile = lib.generators.toYAML {} targets;
+  srcFiles = fs.unions ((if plugins == [] then [] else srcPaths) ++ targets);
+  getPathSuffix = num: path:
+  let
+    comps = (lib.path.subpath.components path);
+    n = builtins.length comps;
+    join = if num > 1 then lib.path.subpath.join else builtins.head;
+  in join (lib.drop (n - num) comps);
+  installTargets = builtins.map
+    (target:
+      let subpath = lib.path.removePrefix ./. target;
+      in "install -Dm644 ${target} $out/lib/systemd/${getPathSuffix 2 subpath}"
+    ) targets;
+  install' = lib.join "\n" installTargets;
+  targets' = { targets = config; };
+  configFile = lib.generators.toYAML {} targets';
   subPackages = (builtins.map (lib.path.removePrefix ./.) plugins);
   plugNamePath = builtins.head subPackages;
-  plugNameComps = lib.path.subpath.components plugNamePath;
-  plugNameGo = builtins.elemAt plugNameComps
-    ((builtins.length plugNameComps) - 1);
+  plugNameGo = getPathSuffix 1 plugNamePath;
   pluginName = lib.removeSuffix ".go" plugNameGo;
   configName = builtins.head (builtins.attrNames config);
   buildModule = if plugins == [] then stdenv.mkDerivation else buildGoModule;
@@ -52,6 +63,8 @@ in buildModule {
     ${if config == {} then "" else "cat >$out/config.yml<<EOF"}
     ${if config == {} then "" else configFile}
     ${if config == {} then "" else "EOF"}
+
+    ${install'}
 
     runHook postInstall
   '';
