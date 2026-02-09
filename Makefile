@@ -21,7 +21,7 @@ plugins: bin/sleep.so bin/lock.so
 build: bin/dbus-systemd-dispatcher
 
 install: build
-	@install -Dm755 dbus-systemd-dispatcher ${DESTDIR}${PREFIX}/lib/dbus-systemd-dispatcher
+	@install -Dm755 bin/dbus-systemd-dispatcher ${DESTDIR}${PREFIX}/lib/dbus-systemd-dispatcher
 	@install -Dm644 dbus-systemd-dispatcher.service ${DESTDIR}${PREFIX}/lib/systemd/user/dbus-systemd-dispatcher.service
 	@install -Dm644 dbus-systemd-dispatcher.service ${DESTDIR}${PREFIX}/lib/systemd/system/dbus-systemd-dispatcher.service
 

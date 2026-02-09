@@ -32,11 +32,6 @@ in buildGoModule {
       --replace /usr/lib $out/bin/
   '';
 
-  installFlags = [
-    "DESTDIR="
-    "PREFIX=$out"
-  ];
-
   meta = {
     description = "Translates D-Bus events into systemd targets";
     license = lib.licenses.isc;
